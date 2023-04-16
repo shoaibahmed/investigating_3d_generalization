@@ -16,6 +16,8 @@ The log parsers parses the final output log in order to plot model performance a
 
 Similarly, `viz_utils/` provides utilities to plot examples from the generated datasets.
 
+Please check `gen_plots.sh` to see how to generate the final plots after training.
+
 ## License
 
 MIT

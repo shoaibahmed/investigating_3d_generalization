@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 
 import natsort
@@ -12,11 +13,23 @@ import matplotlib.pyplot as plt
 multirot_stride = 10
 num_views_per_axis = 360 // multirot_stride
 
+if len(sys.argv) > 3:
+    print(f"Usage: {sys.argv[0]} <Optional: dataset> <Optional: type>")
+    exit()
+
 dataset = "paperclips"
-assert dataset in ["paperclips", "chairs"]
+if len(sys.argv) > 1:
+    dataset = sys.argv[1]
+    print("Received dataset arg:", dataset)
+assert dataset in ["paperclips", "chairs"], dataset
+
 version = "v6"
 examples = "normal"
-assert examples in ["normal", "bg_aug", "rot_aug"]
+if len(sys.argv) > 2:
+    examples = sys.argv[2]
+    print("Received example arg:", examples)
+assert examples in ["normal", "bg_aug", "rot_aug"], examples
+output_ext = "pdf"
 
 log_dir = f"*{dataset}_{version}_wds*"
 log_files = glob.glob(f"{log_dir}/*/*_eval.json")
@@ -31,7 +44,7 @@ print("Unfiltered file list:", len(log_files))
 log_files = [x for x in log_files if "views" not in x]
 print("JSON output files:", len(log_files), log_files[:3])
 
-output_dir = f"{dataset}_{version}_{examples}_wds_plots/"
+output_dir = f"{dataset}_{version}_{examples}_wds_plots_{output_ext}/"
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 
@@ -51,12 +64,10 @@ for file in log_files:
         assert file_name[1] == "models"
         offset = 1
     assert file_name[1+offset] == "wds"
-    
     assert file_name[2+offset] == "stride"
     stride = int(file_name[3+offset])
     num_training_views = int(360 / stride)
     views = num_training_views
-    
     assert file_name[4+offset] == "cls"
     num_classes = int(file_name[5+offset])
     if file_name[6+offset] == "no":
@@ -87,10 +98,7 @@ for file in log_files:
         lines = f.readlines()
     lines = [l.strip() for l in lines if l != ""]
     last_line = lines[-1]
-    # print("Last line:", last_line)
-    
     test_stats = simplejson.loads(last_line)
-    # print("Test stats:", test_stats)
     
     if model not in output_dict:
         output_dict[model] = {}
@@ -108,20 +116,14 @@ print("Training views list:", training_views_list)
 num_classes_list = natsort.natsorted(list(output_dict[model_list[0]][training_views_list[0]].keys()))
 print("Number classes list:", num_classes_list)
 
-# Validate that the k settings are same for every run
-# assert all([all([natsort.natsorted(list(output_dict[model_list[i]].keys())) == training_views_list]) for i in range(len(model_list))])
-# assert all([all([natsort.natsorted(list(output_dict[model_list[i]][training_views_list[j]].keys())) == num_classes_list]) for j in range(len(training_views_list)) for i in range(len(model_list))])
-# assert len(training_views_list) == 6
-
 # Define the barchart
 bar_width = 0.8 / len(num_classes_list) # 0.15
 
 # Separate the models based on different number of training views
-# start_point = -0.25 #- len(num_classes_list)*bar_width / 2
 start_point = -(0.025 if len(num_classes_list) == 3 else 0.1 if len(num_classes_list) == 4 else 0.25) #- len(num_classes_list)*bar_width / 2
 print(f"Bar width: {bar_width} / Starting point: {start_point}")
 colors = ['green', 'red', 'orange', 'purple', 'magenta', 'blue']
-fontsize = 14
+fontsize = 18
 
 r_list = []
 for iterator, num_classes in enumerate(num_classes_list):  # Lower than training views since we pick the acc list from the 0 training views
@@ -148,11 +150,9 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
             assert [x in rotation_axes_all for x in rotation_axes], f"{rotation_axes} should all be in {rotation_axes_all}"
             
             for color_iter, plot_axis in enumerate(rotation_axes):
-                # angle_list = [angle for angle in range(360)]
                 angle_list = natsort.natsorted(list(output_dict[model_list[i]][training_views][num_classes]["rotation_stats"][plot_axis]["angles"].keys()))
                 angle_list = [int(x) for x in angle_list]  # Important for axis values
                 acc_list = [output_dict[model_list[i]][training_views][num_classes]["rotation_stats"][plot_axis]["angles"][str(angle)]["acc"] for angle in angle_list]
-                # plt.plot(angle_list, acc_list, linewidth=3, c=colors[color_iter], label=f'{model_list[i]} trained with {training_views} training views')
                 plt.plot(angle_list, acc_list, linewidth=3, c=colors[color_iter], label=f"{plot_axis}-axis")
 
             num_training_views = len(training_views) if isinstance(training_views, list) else training_views
@@ -173,15 +173,13 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
             plt.ylabel('Accuracy (%)', fontsize=fontsize)
             plt.xlabel(f'Model rotation angle', fontsize=fontsize)
             plt.ylim(-5, 105)
-            # plt.legend(fontsize=fontsize)
-            plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.325),
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.39),
                     ncol=1, fancybox=True, shadow=False, fontsize=fontsize)
             
             plt.xticks(fontsize=fontsize)
             plt.yticks(fontsize=fontsize)
 
-            # plt.tight_layout()
-            output_file = os.path.join(output_dir, f"results_{dataset}_{version}_num_views_{training_views}_{model_list[i]}_cls_{num_classes}.png")
+            output_file = os.path.join(output_dir, f"results_{dataset}_{version}_num_views_{training_views}_{model_list[i]}_cls_{num_classes}.{output_ext}")
             plt.savefig(output_file, dpi=300, bbox_inches="tight")
             plt.show()
             plt.close('all')
@@ -197,10 +195,6 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
                 angle_list = [int(x) for x in angle_list]  # Important for axis values
                 acc_list = [output_dict[model_list[i]][training_views][num_classes]["rotation_stats"][plot_axis]["angles"][str(angle)]["acc"] for angle in angle_list]
                 
-                # Split them into the two different axes
-                # angle_list_first = np.array(angle_list) // num_views_per_axis
-                # angle_list_second = np.array(angle_list) % num_views_per_axis
-                
                 # Convert the grid to image
                 angle_list = np.array(angle_list).reshape(-1, num_views_per_axis)
                 acc_list = np.array(acc_list).reshape(-1, num_views_per_axis)
@@ -213,11 +207,9 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
                 ax.set_xticks([], [])
                 ax.set_yticks([], [])
                 
-                # set axis ticks labels
-                # ax.set_xticklabels([x for x in range(0, acc_list.shape[1] * multirot_stride, multirot_stride)])
-                # ax.set_yticklabels([y for y in range(0, acc_list.shape[0] * multirot_stride, multirot_stride)])
-                
-                plt.colorbar(label="Accuracy", orientation="vertical")
+                cbar = plt.colorbar(orientation="vertical")
+                cbar.ax.tick_params(labelsize=fontsize)
+                cbar.set_label(label="Accuracy", fontsize=fontsize)
                 
                 # Add the training views markers
                 if plot_axis == "xy":
@@ -227,14 +219,12 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
                     plt.scatter([0 for _ in range(len(training_views_angle))], [x // 10 for x in training_views_angle], 
                                 linewidth=0., marker='o', c='tab:blue', s=100)
                 
-                # plt.tight_layout()
-                output_file = os.path.join(output_dir, f"results_{dataset}_{version}_num_views_{training_views}_{model_list[i]}_cls_{num_classes}_{plot_axis}.png")
+                output_file = os.path.join(output_dir, f"results_{dataset}_{version}_num_views_{training_views}_{model_list[i]}_cls_{num_classes}_{plot_axis}.{output_ext}")
                 plt.savefig(output_file, dpi=300, bbox_inches="tight")
                 plt.show()
                 plt.close('all')
-
+            
             for plot_axis in ["y"]:
-                # angle_list = [angle for angle in range(360)]
                 angle_list = natsort.natsorted(list(output_dict[model_list[i]][training_views][num_classes]["rotation_stats"][plot_axis]["angles"].keys()))
                 angle_list = [int(x) for x in angle_list]  # Important for axis values
                 acc_list = [output_dict[model_list[i]][training_views][num_classes]["rotation_stats"][plot_axis]["angles"][str(angle)]["acc"] for angle in angle_list]
@@ -284,15 +274,14 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
                 plt.ylabel('Accuracy (%)', fontsize=fontsize)
                 plt.xlabel(f'Model rotation angle along {plot_axis}-axis', fontsize=fontsize)
                 plt.ylim(-5, 105)
-                # plt.legend(fontsize=fontsize)
-                plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.325),
-                            ncol=1, fancybox=True, shadow=False, fontsize=fontsize)
+                plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.35),
+                            ncol=1, fancybox=True, shadow=False, fontsize=fontsize-2)
 
                 plt.xticks(fontsize=fontsize)
                 plt.yticks(fontsize=fontsize)
 
                 # plt.tight_layout()
-                output_file = os.path.join(output_dir, f"results_{dataset}_{version}_num_views_{training_views}_{model_list[i]}_cls_{num_classes}_axis_{plot_axis}_overlaid.png")
+                output_file = os.path.join(output_dir, f"results_{dataset}_{version}_num_views_{training_views}_{model_list[i]}_cls_{num_classes}_axis_{plot_axis}_overlaid.{output_ext}")
                 plt.savefig(output_file, dpi=300, bbox_inches="tight")
                 plt.show()
                 plt.close('all')
@@ -303,7 +292,6 @@ for model in model_list:
     for plot_type in ["acc", "superclass_acc", "rotation_x", "rotation_y", "rotation_z"]:
         plt.figure(figsize=(12, 8))
 
-        # colors = ['green', 'red', 'orange', 'purple', 'magenta', 'blue']
         cm = plt.get_cmap('viridis')
         colors = [cm(1.*i/len(r_list)) for i in range(len(r_list))]
         
@@ -331,8 +319,7 @@ for model in model_list:
         plt.xticks(fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
 
-        # plt.tight_layout()
-        output_file = os.path.join(output_dir, f"results_{dataset}_{version}_{model}_{plot_type}.png")
+        output_file = os.path.join(output_dir, f"results_{dataset}_{version}_{model}_{plot_type}.{output_ext}")
         plt.savefig(output_file, dpi=300, bbox_inches="tight")
         plt.show()
         plt.close('all')
