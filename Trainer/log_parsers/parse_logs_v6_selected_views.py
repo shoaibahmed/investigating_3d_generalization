@@ -142,8 +142,8 @@ for iterator, num_classes in enumerate(num_classes_list):  # Lower than training
             plt.ylabel('Accuracy (%)', fontsize=fontsize)
             plt.xlabel(f'Model rotation angle', fontsize=fontsize)
             plt.ylim(-5, 105)
-            plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.39),
-                       ncol=1, fancybox=True, shadow=False, fontsize=fontsize)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.23),
+                       ncol=2, fancybox=True, shadow=False, fontsize=fontsize)
             
             plt.xticks(fontsize=fontsize)
             plt.yticks(fontsize=fontsize)
