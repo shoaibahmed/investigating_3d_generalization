@@ -1,6 +1,6 @@
 # Investigating 3D generalization
 
-A PyTorch implementation for the paper [***Investigating the Nature of 3D Generalization in Deep Neural Networks***](https://arxiv.org/abs/).
+A PyTorch implementation for the paper [***Investigating the Nature of 3D Generalization in Deep Neural Networks***](https://arxiv.org/abs/2304.09358).
 
 ## Execution
 
@@ -18,7 +18,7 @@ Please see the corresponding folder for more details.
   author={Siddiqui, Shoaib Ahmed and Krueger, David and Breuel, Thomas},
   journal={arXiv preprint},
   year={2023},
-  url={https://arxiv.org/abs/}
+  url={https://arxiv.org/abs/2304.09358}
 }
 ```
 
